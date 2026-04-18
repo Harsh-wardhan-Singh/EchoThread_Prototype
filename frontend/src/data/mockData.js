@@ -1,11 +1,13 @@
 export const mockPosts = [
 	{
 		id: 'm1',
+		user_uuid: 'a5d2f4d9-9c8e-4df2-8bf1-5f319f2d7a11',
 		content: 'I feel nervous about internals but trying to stay focused.',
 		created_at: new Date(Date.now() - 3600 * 1000 * 8).toISOString(),
 	},
 	{
 		id: 'm2',
+		user_uuid: '1c0f93e0-6020-4ff2-9a61-a9b8a05b7dd3',
 		content: 'Small wins today. Finished one assignment and feel calm.',
 		created_at: new Date(Date.now() - 3600 * 1000 * 20).toISOString(),
 	},

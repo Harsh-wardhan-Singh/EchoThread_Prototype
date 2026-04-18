@@ -118,11 +118,11 @@ OR in-memory fallback
 We are using a hybrid OTP system:
 
 Student Login:
-Email must end with: .hrc.ac.in
+Email must end with: .hrc.du.ac.in
 OTP is generated and verified
 Fallback OTP allowed: 123456
 Counselor Login:
-Email: counselor@hrc.ac.in
+Email: counselor@hrc.du.ac.in
 OTP bypass allowed
 Accept OTP: 999999
 IMPORTANT:

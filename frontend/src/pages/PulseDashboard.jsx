@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import Navbar from '../components/Navbar'
 import PulseChart from '../components/PulseChart'
+import StudentLayout from '../components/StudentLayout'
 import { getPulse } from '../services/api'
+import { Card, Section } from '../components/ui/Primitives'
 
 function Metric({ label, value }) {
 	return (
-		<div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-			<p className="text-sm text-slate-500">{label}</p>
-			<p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
-		</div>
+		<Section className="!rounded-md p-4">
+			<p className="text-xs text-[#9e8db0]">{label}</p>
+			<p className="mt-1 text-xl font-semibold text-[#5f4d73]">{value}</p>
+		</Section>
 	)
 }
 
@@ -24,25 +25,38 @@ function PulseDashboard({ role, onLogout }) {
 	}, [])
 
 	if (!pulse) {
-		return null
+		return (
+			<StudentLayout role={role} onLogout={onLogout}>
+				<div className="space-y-4">
+					<Card>
+						<p className="text-sm text-[#8e7d9f]">Loading your pulse reflections...</p>
+					</Card>
+				</div>
+			</StudentLayout>
+		)
 	}
 
 	return (
-		<div className="min-h-screen bg-slate-100">
-			<Navbar role={role} onLogout={onLogout} />
-			<main className="mx-auto max-w-6xl p-4 space-y-4">
-				<h1 className="text-2xl font-semibold text-slate-900">Campus Pulse Dashboard</h1>
+		<StudentLayout role={role} onLogout={onLogout}>
+			<div className="space-y-4">
+				<Card className="space-y-2">
+					<h1 className="text-2xl font-semibold text-[#5f4d73]">Pulse reflection</h1>
+					<p className="text-sm text-[#8e7d9f]">A soft weekly snapshot of your emotional rhythm.</p>
+				</Card>
 
-				<section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+				<section className="grid grid-cols-2 gap-3">
 					<Metric label="Total Posts" value={pulse.total_posts} />
 					<Metric label="Diary Entries" value={pulse.total_diary_entries} />
-					<Metric label="Negative Sentiment" value={pulse.sentiment_distribution.negative} />
+					<Metric label="Low Mood" value={pulse.sentiment_distribution.negative} />
 					<Metric label="High Risk" value={pulse.risk_distribution.HIGH} />
 				</section>
 
-				<PulseChart activity={pulse.seven_day_activity} />
-			</main>
-		</div>
+				<section className="space-y-3">
+					<Section className="!rounded-md p-4 text-sm text-[#8e7d9f]">Weekly activity trend</Section>
+					<PulseChart activity={pulse.seven_day_activity} />
+				</section>
+			</div>
+		</StudentLayout>
 	)
 }
 

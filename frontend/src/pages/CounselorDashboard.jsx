@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Navbar from '../components/Navbar'
 import { getFlaggedPosts } from '../services/api'
+import { Card, Section, Textarea } from '../components/ui/Primitives'
 
 function CounselorDashboard({ role, onLogout }) {
 	const [posts, setPosts] = useState([])
@@ -14,40 +15,45 @@ function CounselorDashboard({ role, onLogout }) {
 	}, [])
 
 	return (
-		<div className="min-h-screen bg-slate-100">
+		<div className="space-y-4 safe-fade-slide">
 			<Navbar role={role} onLogout={onLogout} />
-			<main className="mx-auto max-w-6xl p-4">
-				<h1 className="text-2xl font-semibold text-slate-900">Counselor Dashboard</h1>
-				<p className="text-sm text-slate-600 mt-1">Flagged posts requiring attention.</p>
+			<main className="space-y-4">
+				<Card className="space-y-2">
+					<h1 className="text-2xl font-semibold text-[#5f4d73]">Care dashboard</h1>
+					<p className="text-sm text-[#8e7d9f]">Posts that may need compassionate follow-up.</p>
+				</Card>
 
-				<section className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-					<table className="min-w-full text-sm">
-						<thead className="bg-slate-50 text-slate-600">
-							<tr>
-								<th className="px-4 py-3 text-left">Post</th>
-								<th className="px-4 py-3 text-left">Risk</th>
-								<th className="px-4 py-3 text-left">Sentiment</th>
-								<th className="px-4 py-3 text-left">Emotion</th>
-							</tr>
-						</thead>
-						<tbody>
-							{posts.map((post) => (
-								<tr key={post.id} className="border-t border-slate-100">
-									<td className="px-4 py-3 text-slate-800">{post.content}</td>
-									<td className="px-4 py-3 font-medium text-slate-800">{post.risk}</td>
-									<td className="px-4 py-3 capitalize text-slate-700">{post.sentiment}</td>
-									<td className="px-4 py-3 capitalize text-slate-700">{post.emotion}</td>
-								</tr>
-							))}
-							{posts.length === 0 && (
-								<tr>
-									<td className="px-4 py-4 text-slate-500" colSpan={4}>
-										No flagged posts found.
-									</td>
-								</tr>
-							)}
-						</tbody>
-					</table>
+				<section className="space-y-4">
+					{posts.map((post) => (
+						<Card key={post.id} className="space-y-4">
+							<div className="flex flex-wrap items-center gap-2">
+								<span className="safe-chip">
+									{post.risk === 'HIGH' ? 'High Risk' : 'Medium Risk'}
+								</span>
+								<span className="safe-chip">Needs Attention</span>
+							</div>
+
+							<p className="text-[#5f4d73] leading-relaxed">{post.content}</p>
+							<p className="text-xs text-[#9382a6] capitalize">
+								{post.sentiment} • {post.emotion}
+							</p>
+
+							<Section className="p-3 sm:p-4">
+								<p className="text-xs text-[#9585a9] mb-2">Counselor Response Draft</p>
+								<Textarea
+									rows={2}
+									placeholder="Write a short, supportive response..."
+									className="min-h-[92px]"
+								/>
+							</Section>
+						</Card>
+					))}
+
+					{posts.length === 0 && (
+						<Card className="text-sm text-[#8e7d9f]">
+							No flagged posts found.
+						</Card>
+					)}
 				</section>
 			</main>
 		</div>

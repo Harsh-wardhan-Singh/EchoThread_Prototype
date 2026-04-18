@@ -16,13 +16,36 @@ export async function verifyOtp(email, otp) {
 	return data
 }
 
-export async function analyzeDiary(email, text) {
-	const { data } = await api.post('/ai/diary', { email, text })
+export async function analyzeDiary(email, text, sessionToken) {
+	const { data } = await api.post(
+		'/ai/diary',
+		{ email, text },
+		{
+			timeout: 30000,
+			headers: { 'x-session-token': sessionToken },
+		},
+	)
 	return data
 }
 
-export async function createPost(content) {
-	const { data } = await api.post('/posts', { content })
+export async function getDiaryWeek(email, sessionToken) {
+	const { data } = await api.get('/ai/diary/week', {
+		params: { email },
+		headers: { 'x-session-token': sessionToken },
+	})
+	return data
+}
+
+export async function getDiaryHistory(email, sessionToken, weeks = 8) {
+	const { data } = await api.get('/ai/diary/history', {
+		params: { email, weeks },
+		headers: { 'x-session-token': sessionToken },
+	})
+	return data
+}
+
+export async function createPost(content, sessionToken) {
+	const { data } = await api.post('/posts', { content }, { headers: { 'x-session-token': sessionToken } })
 	return data
 }
 

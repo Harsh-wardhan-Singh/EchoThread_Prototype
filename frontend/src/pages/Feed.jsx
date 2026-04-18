@@ -1,24 +1,48 @@
-import { useEffect, useState } from 'react'
-import Navbar from '../components/Navbar'
+import { useCallback, useEffect, useState } from 'react'
 import PostCard from '../components/PostCard'
+import StudentLayout from '../components/StudentLayout'
+import { mockPosts } from '../data/mockData'
 import { createPost, getPosts } from '../services/api'
+import { Button, Card, Textarea } from '../components/ui/Primitives'
 
-function Feed({ role, onLogout }) {
-	const [posts, setPosts] = useState([])
+function Feed({ role, sessionToken, onLogout }) {
+	const [posts, setPosts] = useState(mockPosts)
 	const [content, setContent] = useState('')
 	const [loading, setLoading] = useState(false)
+	const [initialLoading, setInitialLoading] = useState(true)
+	const [liveSyncing, setLiveSyncing] = useState(false)
 
-	useEffect(() => {
-		let mounted = true
-		getPosts().then((data) => {
-			if (mounted) {
+	const loadPosts = useCallback(async (showSyncState = false) => {
+		if (showSyncState) {
+			setLiveSyncing(true)
+		}
+		try {
+			const data = await getPosts()
+			if (Array.isArray(data) && data.length > 0) {
 				setPosts(data)
+			} else {
+				setPosts(mockPosts)
 			}
-		})
-		return () => {
-			mounted = false
+		} catch {
+			setPosts(mockPosts)
+		} finally {
+			setInitialLoading(false)
+			if (showSyncState) {
+				setLiveSyncing(false)
+			}
 		}
 	}, [])
+
+	useEffect(() => {
+		Promise.resolve().then(() => loadPosts())
+		const intervalId = setInterval(() => {
+			loadPosts(true)
+		}, 8000)
+
+		return () => {
+			clearInterval(intervalId)
+		}
+	}, [loadPosts])
 
 	const handleCreate = async (event) => {
 		event.preventDefault()
@@ -27,47 +51,54 @@ function Feed({ role, onLogout }) {
 		}
 		setLoading(true)
 		try {
-			await createPost(content.trim())
+			await createPost(content.trim(), sessionToken)
 			setContent('')
-			const data = await getPosts()
-			setPosts(data)
+			await loadPosts(true)
 		} finally {
 			setLoading(false)
 		}
 	}
 
 	return (
-		<div className="min-h-screen bg-slate-100">
-			<Navbar role={role} onLogout={onLogout} />
-			<main className="mx-auto max-w-4xl p-4 space-y-4">
-				<section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-					<h1 className="text-xl font-semibold text-slate-900">Anonymous Feed</h1>
-					<p className="text-sm text-slate-600 mt-1">Share thoughts anonymously with your campus.</p>
+		<StudentLayout role={role} onLogout={onLogout}>
+			<div className="space-y-4">
+				<Card className="space-y-4">
+					<h1 className="text-2xl font-semibold text-[#5f4d73]">Community reflections</h1>
+					<p className="text-sm text-[#8e7d9f]">A gentle stream of anonymous student thoughts.</p>
 					<form className="mt-4" onSubmit={handleCreate}>
-						<textarea
+						<Textarea
 							rows={4}
 							value={content}
 							onChange={(event) => setContent(event.target.value)}
 							placeholder="Write an anonymous post..."
-							className="w-full rounded border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+							className="min-h-[112px]"
 						/>
-						<button
-							type="submit"
-							disabled={loading}
-							className="mt-3 rounded bg-indigo-600 px-4 py-2 text-white font-medium hover:bg-indigo-700 disabled:opacity-60"
-						>
+						<Button type="submit" disabled={loading} className="mt-3">
 							{loading ? 'Posting...' : 'Post'}
-						</button>
+						</Button>
 					</form>
-				</section>
+				</Card>
 
-				<section className="space-y-3">
+				{initialLoading && (
+					<Card>
+						<p className="text-sm text-[#8e7d9f]">Posts are loading...</p>
+					</Card>
+				)}
+
+				{!initialLoading && (
+					<p className="text-xs text-[#9b8dae] px-1">{liveSyncing ? 'Syncing latest posts...' : 'Auto-refreshing posts every few seconds'}</p>
+				)}
+
+				<section className="space-y-4">
 					{posts.map((post) => (
-						<PostCard key={post.id} post={post} />
+						<div key={post.id} className="space-y-2">
+							<PostCard post={post} />
+							<div className="h-px bg-[#f3e6fa]" />
+						</div>
 					))}
 				</section>
-			</main>
-		</div>
+			</div>
+		</StudentLayout>
 	)
 }
 

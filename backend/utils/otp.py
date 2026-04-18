@@ -2,14 +2,14 @@ import random
 import string
 
 
-COUNSELOR_EMAIL = "counselor@hrc.ac.in"
+COUNSELOR_EMAIL = "counselor@hrc.du.ac.in"
 
 
 def detect_role(email: str):
 	email = (email or "").strip().lower()
 	if email == COUNSELOR_EMAIL:
 		return "counselor"
-	if email.endswith("hrc.ac.in"):
+	if email.endswith("hrc.du.ac.in"):
 		return "student"
 	return None
 

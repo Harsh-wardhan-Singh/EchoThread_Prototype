@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { Button } from './ui/Primitives'
 
 function NavLink({ to, children }) {
 	const location = useLocation()
@@ -6,8 +7,10 @@ function NavLink({ to, children }) {
 	return (
 		<Link
 			to={to}
-			className={`px-3 py-2 rounded text-sm font-medium ${
-				active ? 'bg-indigo-600 text-white' : 'text-slate-700 hover:bg-slate-200'
+			className={`flex-1 text-center px-3 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
+				active
+					? 'bg-gradient-to-r from-[#f6aac8] to-[#ccb8ff] text-white shadow-[0_10px_24px_rgba(244,180,217,0.3)]'
+					: 'text-[#8f7fa1] hover:bg-white/70 hover:scale-[1.02]'
 			}`}
 		>
 			{children}
@@ -17,30 +20,29 @@ function NavLink({ to, children }) {
 
 function Navbar({ role, onLogout }) {
 	return (
-		<nav className="border-b border-slate-200 bg-white">
-			<div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-				<div className="flex items-center gap-3">
-					<span className="text-lg font-semibold text-slate-800">EchoThread</span>
-					<span className="text-xs uppercase px-2 py-1 rounded bg-slate-100 text-slate-600">{role}</span>
+		<nav className="w-full">
+			<div className="safe-section !rounded-none !rounded-t-[var(--radius-app)] !p-3 sm:!p-4 flex items-center justify-between">
+				<div className="flex items-center gap-4">
+					<div className="flex items-end gap-2 text-[#5d4f6f] leading-none">
+						<span className="text-3xl sm:text-3xl" aria-hidden="true">🌸</span>
+						<span className="text-[3rem] sm:text-[5.5rem] md:text-[6.5rem] font-serif font-black tracking-tight">EchoThread</span>
+					</div>
+					<span className="safe-chip uppercase">
+						{role}
+					</span>
 				</div>
-				<div className="flex items-center gap-2">
-					{role === 'student' && (
-						<>
-							<NavLink to="/diary">Diary</NavLink>
-							<NavLink to="/feed">Feed</NavLink>
-							<NavLink to="/pulse">Pulse</NavLink>
-						</>
-					)}
-					{role === 'counselor' && <NavLink to="/counselor">Counselor</NavLink>}
-					<button
-						type="button"
-						onClick={onLogout}
-						className="ml-2 px-3 py-2 rounded text-sm font-medium bg-slate-800 text-white hover:bg-slate-900"
-					>
-						Logout
-					</button>
-				</div>
+				<Button type="button" onClick={onLogout} className="!h-9 !px-4 !text-xs">
+					Logout
+				</Button>
 			</div>
+
+			{role === 'counselor' && (
+				<div className="mt-3 px-4 pb-4">
+					<div className="safe-section !p-2">
+					<NavLink to="/counselor">Counselor</NavLink>
+					</div>
+				</div>
+			)}
 		</nav>
 	)
 }

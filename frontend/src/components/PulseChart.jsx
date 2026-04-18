@@ -21,7 +21,8 @@ function PulseChart({ activity = [] }) {
 			{
 				label: 'Activity',
 				data: values,
-				backgroundColor: '#4f46e5',
+				backgroundColor: '#f3b5d3',
+				borderRadius: 0,
 			},
 		],
 	}
@@ -32,10 +33,20 @@ function PulseChart({ activity = [] }) {
 			legend: { display: false },
 			title: { display: true, text: '7-Day Campus Activity' },
 		},
+		scales: {
+			x: {
+				grid: { display: false },
+				ticks: { color: '#9b8caf' },
+			},
+			y: {
+				grid: { color: 'rgba(210, 189, 231, 0.2)' },
+				ticks: { color: '#9b8caf' },
+			},
+		},
 	}
 
 	return (
-		<div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+		<div className="safe-card !rounded-md !p-4 sm:!p-5">
 			<Bar options={options} data={data} />
 		</div>
 	)

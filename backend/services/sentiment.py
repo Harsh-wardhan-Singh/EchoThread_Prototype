@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import time
 
 from dotenv import load_dotenv
 
@@ -14,18 +15,64 @@ except Exception:
 
 EMOTION_KEYWORDS = {
 	"stress": ["stress", "deadline", "pressure", "overwhelmed"],
-	"anxiety": ["anxious", "panic", "worried", "fear"],
+	"anxiety": ["anxious", "panic", "worried", "fear", "can't breathe", "restless"],
 	"calm": ["calm", "peaceful", "relaxed", "better"],
-	"sadness": ["sad", "lonely", "down", "empty"],
+	"sadness": ["sad", "lonely", "down", "empty", "depressed", "hopeless", "numb"],
 	"anger": ["angry", "frustrated", "irritated", "rage"],
 }
 
 POSITIVE_WORDS = {"good", "better", "great", "happy", "calm", "hopeful"}
-NEGATIVE_WORDS = {"bad", "stressed", "anxious", "sad", "panic", "hopeless"}
+NEGATIVE_WORDS = {
+	"bad",
+	"stressed",
+	"anxious",
+	"sad",
+	"panic",
+	"hopeless",
+	"depressed",
+	"worthless",
+	"helpless",
+	"numb",
+	"kill myself",
+	"killing myself",
+	"suicidal",
+	"want to die",
+}
+
+HIGH_DISTRESS_TERMS = {
+	"kill myself",
+	"killing myself",
+	"suicidal",
+	"want to die",
+	"end my life",
+	"self harm",
+}
+
+_MODEL_WARMED_UP = False
+
+
+def _is_loading_error(error: Exception) -> bool:
+	message = str(error).lower()
+	markers = [
+		"is currently loading",
+		"model is loading",
+		"cannot generate a text",
+		"please retry",
+		"try again",
+	]
+	return any(marker in message for marker in markers)
 
 
 def _fallback_analysis(text: str):
 	content = (text or "").lower()
+	if any(term in content for term in HIGH_DISTRESS_TERMS):
+		return {
+			"sentiment": "negative",
+			"emotion": "sadness",
+			"confidence": 0.95,
+			"provider": "fallback",
+		}
+
 	pos_hits = sum(1 for word in POSITIVE_WORDS if word in content)
 	neg_hits = sum(1 for word in NEGATIVE_WORDS if word in content)
 
@@ -173,34 +220,64 @@ def _analyze_with_hf_classifiers(client, text: str):
 
 
 def analyze_text(text: str):
+	global _MODEL_WARMED_UP
+
 	token = os.getenv("HF_TOKEN", "") or os.getenv("HF_API_KEY", "")
 	model = os.getenv("HF_MODEL", "").strip()
 	if InferenceClient is None or not token:
 		return _fallback_analysis(text)
 
+	initial_timeout = 25 if not _MODEL_WARMED_UP else 8
+	fallback_timeout = 35 if not _MODEL_WARMED_UP else 12
+
 	try:
-		client = InferenceClient(token=token)
+		client = InferenceClient(token=token, timeout=initial_timeout)
 	except Exception:
 		return _fallback_analysis(text)
+
+	secondary_client = None
+	try:
+		secondary_client = InferenceClient(token=token, timeout=fallback_timeout)
+	except Exception:
+		secondary_client = client
 
 	if model:
 		try:
 			result = _analyze_with_chat_completion(client, model, text)
 			if result:
+				_MODEL_WARMED_UP = True
 				return result
-		except Exception:
-			pass
+		except Exception as error:
+			if _is_loading_error(error):
+				time.sleep(1.2)
+				try:
+					result = _analyze_with_chat_completion(secondary_client, model, text)
+					if result:
+						_MODEL_WARMED_UP = True
+						return result
+				except Exception:
+					pass
 
 		try:
 			result = _analyze_with_text_generation(client, model, text)
 			if result:
+				_MODEL_WARMED_UP = True
 				return result
-		except Exception:
-			pass
+		except Exception as error:
+			if _is_loading_error(error):
+				time.sleep(1.2)
+				try:
+					result = _analyze_with_text_generation(secondary_client, model, text)
+					if result:
+						_MODEL_WARMED_UP = True
+						return result
+				except Exception:
+					pass
 
 	try:
-		result = _analyze_with_hf_classifiers(client, text)
+		result = _analyze_with_hf_classifiers(secondary_client or client, text)
 		if result:
+			_MODEL_WARMED_UP = True
 			return result
 	except Exception:
 		pass
