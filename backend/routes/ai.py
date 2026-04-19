@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from datetime import timedelta
 from uuid import uuid4
@@ -5,12 +6,16 @@ from uuid import uuid4
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, EmailStr
 
+from data.fake_data import FAKE_DIARY
 from db import db
 from routes.auth import verify_session
 from services.assess_risk import assess_risk
 from services.sentiment import analyze_text
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+
+DEMO_STUDENT_ONE_EMAIL = "student1@demo.hrc.du.ac.in"
+DEMO_STUDENT_TWO_EMAIL = "student2@demo.hrc.du.ac.in"
 
 
 class AnalyzeRequest(BaseModel):
@@ -20,6 +25,46 @@ class AnalyzeRequest(BaseModel):
 class DiaryRequest(BaseModel):
 	email: EmailStr
 	text: str
+
+
+def _flag_enabled(name: str, default: bool = False):
+	value = os.getenv(name, "true" if default else "false")
+	return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _canonical_demo_email(email: str):
+	value = (email or "").lower().strip()
+	if value.endswith("@demo.hrc.ac.in"):
+		return value.replace("@demo.hrc.ac.in", "@demo.hrc.du.ac.in")
+	return value
+
+
+def _emails_match(email_a: str, email_b: str):
+	return _canonical_demo_email(email_a) == _canonical_demo_email(email_b)
+
+
+def _get_diary_entries(email: str, start_checkin_date=None, end_checkin_date=None):
+	if _flag_enabled("DIARY_USE_FAKE_DATA", default=True):
+		entries = [
+			entry
+			for entry in FAKE_DIARY
+			if _emails_match(entry.get("email", ""), email)
+		]
+		if start_checkin_date:
+			entries = [entry for entry in entries if (entry.get("checkin_date") or "") >= start_checkin_date]
+		if end_checkin_date:
+			entries = [entry for entry in entries if (entry.get("checkin_date") or "") <= end_checkin_date]
+		entries.sort(key=lambda entry: (entry.get("checkin_date") or "", entry.get("created_at") or ""))
+		return entries
+
+	return db.get_diary_entries_for_email(email, start_checkin_date, end_checkin_date)
+
+
+def _has_diary_entry_for_day(email: str, checkin_date: str):
+	if _flag_enabled("DIARY_USE_FAKE_DATA", default=True):
+		entries = _get_diary_entries(email, checkin_date, checkin_date)
+		return any((entry.get("checkin_date") or "") == checkin_date for entry in entries)
+	return db.has_diary_entry_for_day(email, checkin_date)
 
 
 @router.post("/analyze")
@@ -45,7 +90,7 @@ def create_diary_entry(payload: DiaryRequest, x_session_token: str | None = Head
 	email = payload.email.lower()
 	verify_session(email, x_session_token)
 	today = datetime.utcnow().date().isoformat()
-	if db.has_diary_entry_for_day(email, today):
+	if _has_diary_entry_for_day(email, today):
 		raise HTTPException(status_code=409, detail="You have already checked in today. Please come back tomorrow.")
 
 	try:
@@ -60,7 +105,7 @@ def create_diary_entry(payload: DiaryRequest, x_session_token: str | None = Head
 	risk_data = assess_risk(payload.text, analysis["sentiment"], analysis["emotion"])
 	entry = {
 		"id": f"d_{uuid4().hex[:10]}",
-		"email": email,
+		"email": _canonical_demo_email(email) if _flag_enabled("DIARY_USE_FAKE_DATA", default=True) else email,
 		"text": payload.text,
 		"created_at": datetime.utcnow().isoformat(),
 		"checkin_date": today,
@@ -72,7 +117,10 @@ def create_diary_entry(payload: DiaryRequest, x_session_token: str | None = Head
 	}
 	saved = True
 	try:
-		db.add_diary_entry(entry)
+		if _flag_enabled("DIARY_USE_FAKE_DATA", default=True):
+			FAKE_DIARY.append(entry)
+		else:
+			db.add_diary_entry(entry)
 	except Exception:
 		saved = False
 	return {
@@ -93,7 +141,7 @@ def get_diary_week(email: EmailStr, x_session_token: str | None = Header(default
 	start_str = start_day.isoformat()
 	end_str = today.isoformat()
 
-	entries = db.get_diary_entries_for_email(email_lower, start_str, end_str)
+	entries = _get_diary_entries(email_lower, start_str, end_str)
 	entries_by_day = {}
 	for entry in entries:
 		day_key = entry.get("checkin_date")
@@ -149,7 +197,7 @@ def get_previous_diary_history(email: EmailStr, weeks: int = 8, x_session_token:
 	today = datetime.utcnow().date()
 	current_week_start = today - timedelta(days=today.weekday())
 
-	entries = db.get_diary_entries_for_email(email_lower)
+	entries = _get_diary_entries(email_lower)
 	weekly_buckets = {}
 	for entry in entries:
 		day_key = entry.get("checkin_date")
@@ -192,68 +240,12 @@ def get_previous_diary_history(email: EmailStr, weeks: int = 8, x_session_token:
 		)
 
 	ordered_weeks = sorted(weekly_buckets.values(), key=lambda item: item["week_start"], reverse=True)
-	if len(ordered_weeks) == 0:
-		previous_week_start = current_week_start - timedelta(days=7)
-		synthetic_by_day = {
-			(previous_week_start + timedelta(days=0)).isoformat(): {
-				"id": "synthetic_prev_mon",
-				"date": (previous_week_start + timedelta(days=0)).isoformat(),
-				"weekday": (previous_week_start + timedelta(days=0)).strftime("%a"),
-				"created_at": datetime.combine(previous_week_start + timedelta(days=0), datetime.min.time()).replace(hour=19, minute=20).isoformat(),
-				"text": "I had an okay Monday and felt calmer by night.",
-				"sentiment": "positive",
-				"emotion": "calm",
-				"risk": "LOW",
-			},
-			(previous_week_start + timedelta(days=1)).isoformat(): {
-				"id": "synthetic_prev_tue",
-				"date": (previous_week_start + timedelta(days=1)).isoformat(),
-				"weekday": (previous_week_start + timedelta(days=1)).strftime("%a"),
-				"created_at": datetime.combine(previous_week_start + timedelta(days=1), datetime.min.time()).replace(hour=19, minute=55).isoformat(),
-				"text": "Tuesday felt heavy with assignments but manageable.",
-				"sentiment": "neutral",
-				"emotion": "stress",
-				"risk": "LOW",
-			},
-			(previous_week_start + timedelta(days=3)).isoformat(): {
-				"id": "synthetic_prev_thu",
-				"date": (previous_week_start + timedelta(days=3)).isoformat(),
-				"weekday": (previous_week_start + timedelta(days=3)).strftime("%a"),
-				"created_at": datetime.combine(previous_week_start + timedelta(days=3), datetime.min.time()).replace(hour=18, minute=50).isoformat(),
-				"text": "Thursday I felt anxious before class, then better later.",
-				"sentiment": "negative",
-				"emotion": "anxiety",
-				"risk": "MEDIUM",
-			},
-			(previous_week_start + timedelta(days=4)).isoformat(): {
-				"id": "synthetic_prev_fri",
-				"date": (previous_week_start + timedelta(days=4)).isoformat(),
-				"weekday": (previous_week_start + timedelta(days=4)).strftime("%a"),
-				"created_at": datetime.combine(previous_week_start + timedelta(days=4), datetime.min.time()).replace(hour=20, minute=10).isoformat(),
-				"text": "Friday felt balanced and I got through most tasks.",
-				"sentiment": "neutral",
-				"emotion": "calm",
-				"risk": "LOW",
-			},
-			(previous_week_start + timedelta(days=6)).isoformat(): {
-				"id": "synthetic_prev_sun",
-				"date": (previous_week_start + timedelta(days=6)).isoformat(),
-				"weekday": (previous_week_start + timedelta(days=6)).strftime("%a"),
-				"created_at": datetime.combine(previous_week_start + timedelta(days=6), datetime.min.time()).replace(hour=21, minute=5).isoformat(),
-				"text": "Sunday was reflective; I felt sad at first, then settled.",
-				"sentiment": "negative",
-				"emotion": "sadness",
-				"risk": "LOW",
-			},
-		}
-		ordered_weeks = [
-			{
-				"week_start": previous_week_start.isoformat(),
-				"week_end": (previous_week_start + timedelta(days=6)).isoformat(),
-				"label": f"{previous_week_start.strftime('%b %d')} - {(previous_week_start + timedelta(days=6)).strftime('%b %d')}",
-				"entries_by_day": synthetic_by_day,
-			}
-		]
+	if _flag_enabled("DIARY_USE_FAKE_DATA", default=True) and (
+		_emails_match(email_lower, DEMO_STUDENT_ONE_EMAIL) or _emails_match(email_lower, DEMO_STUDENT_TWO_EMAIL)
+	):
+		previous_week_start = (current_week_start - timedelta(days=7)).isoformat()
+		ordered_weeks = [week for week in ordered_weeks if week.get("week_start") == previous_week_start]
+
 	for week in ordered_weeks:
 		week_start_day = datetime.fromisoformat(week["week_start"]).date()
 		days = []

@@ -64,7 +64,7 @@ function StudentLayout({ role, onLogout, children }) {
 					<SideLink to="/diary" icon={<DiaryIcon />}>Diary</SideLink>
 					<SideLink to="/feed" icon={<FeedIcon />}>Feed</SideLink>
 					<SideLink to="/pulse" icon={<PulseIcon />}>Pulse</SideLink>
-					<SideLink to="/chat" icon={<ChatIcon />}>Open chat</SideLink>
+					<SideLink to="/chat" icon={<ChatIcon />}>Counselor chat</SideLink>
 				</aside>
 				<main className="min-h-0 h-full overflow-hidden pr-2">
 					<div className="safe-section h-full !p-4 overflow-y-auto overflow-x-hidden">

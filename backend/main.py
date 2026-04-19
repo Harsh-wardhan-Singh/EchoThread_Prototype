@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from db import db
 from routes.ai import router as ai_router
 from routes.auth import router as auth_router
+from routes.chat import router as chat_router
 from routes.post import router as post_router
 from routes.pulse import router as pulse_router
 
@@ -19,6 +20,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(ai_router)
+app.include_router(chat_router)
 app.include_router(post_router)
 app.include_router(pulse_router)
 

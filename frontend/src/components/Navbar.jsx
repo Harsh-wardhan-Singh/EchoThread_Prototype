@@ -39,7 +39,10 @@ function Navbar({ role, onLogout }) {
 			{role === 'counselor' && (
 				<div className="mt-3 px-4 pb-4">
 					<div className="safe-section !p-2">
-					<NavLink to="/counselor">Counselor</NavLink>
+						<div className="flex gap-2">
+							<NavLink to="/counselor">Dashboard</NavLink>
+							<NavLink to="/counselor/chats">Chats</NavLink>
+						</div>
 					</div>
 				</div>
 			)}

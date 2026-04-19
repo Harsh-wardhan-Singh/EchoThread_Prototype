@@ -5,6 +5,7 @@ import Diary from './pages/Diary'
 import Feed from './pages/Feed'
 import PulseDashboard from './pages/PulseDashboard'
 import CounselorDashboard from './pages/CounselorDashboard'
+import CounselorChats from './pages/CounselorChats'
 import OpenChat from './pages/OpenChat'
 import { AppContainer } from './components/ui/Primitives'
 
@@ -65,6 +66,14 @@ function AppRoutes({ auth, authProps, onLogin }) {
           element={
             <ProtectedRoute role={auth.role} allowedRoles={['counselor']}>
               <CounselorDashboard {...authProps} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/counselor/chats"
+          element={
+            <ProtectedRoute role={auth.role} allowedRoles={['counselor']}>
+              <CounselorChats {...authProps} />
             </ProtectedRoute>
           }
         />

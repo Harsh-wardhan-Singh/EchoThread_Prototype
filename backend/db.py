@@ -14,6 +14,11 @@ except Exception:
 	MongoClient = None
 	ReturnDocument = None
 
+try:
+	from bson import ObjectId
+except Exception:
+	ObjectId = None
+
 
 class DatabaseManager:
 	def __init__(self):
@@ -23,6 +28,8 @@ class DatabaseManager:
 		self.memory = {
 			"posts": [*FAKE_POSTS],
 			"diary_entries": [*FAKE_DIARY],
+			"chats": [],
+			"messages": [],
 			"users": {},
 		}
 		self._connect_mongo()
@@ -45,6 +52,14 @@ class DatabaseManager:
 			return
 		try:
 			self.database.users.create_index("email", unique=True)
+		except Exception:
+			pass
+		try:
+			self.database.chats.create_index([("student_id", 1), ("counselor_id", 1)], unique=True)
+		except Exception:
+			pass
+		try:
+			self.database.messages.create_index([("chat_id", 1), ("timestamp", 1)])
 		except Exception:
 			pass
 
@@ -81,6 +96,40 @@ class DatabaseManager:
 			docs = list(self.database.posts.find({}))
 			return [self._serialize(doc) for doc in docs]
 		return [*self.memory["posts"]]
+
+	def _build_post_filter(self, post_id):
+		query = {"id": post_id}
+		if ObjectId is not None:
+			try:
+				query = {"$or": [{"id": post_id}, {"_id": ObjectId(post_id)}]}
+			except Exception:
+				query = {"id": post_id}
+		return query
+
+	def get_post_by_id(self, post_id):
+		if self.database is not None:
+			doc = self.database.posts.find_one(self._build_post_filter(post_id))
+			return self._serialize(doc)
+
+		for post in self.memory["posts"]:
+			if post.get("id") == post_id or str(post.get("_id")) == str(post_id):
+				return dict(post)
+		return None
+
+	def save_post_comments(self, post_id, comments):
+		if self.database is not None:
+			self.database.posts.update_one(
+				self._build_post_filter(post_id),
+				{"$set": {"comments": comments}},
+			)
+			return
+
+		for index, post in enumerate(self.memory["posts"]):
+			if post.get("id") == post_id or str(post.get("_id")) == str(post_id):
+				updated = dict(post)
+				updated["comments"] = comments
+				self.memory["posts"][index] = updated
+				return
 
 	def add_diary_entry(self, entry):
 		entry.setdefault("created_at", datetime.utcnow().isoformat())
@@ -168,6 +217,90 @@ class DatabaseManager:
 			"created_at": datetime.utcnow().isoformat(),
 		}
 		return user_uuid
+
+	def count_users_by_role(self, role):
+		if self.database is not None:
+			return self.database.users.count_documents({"role": role})
+		return sum(1 for user in self.memory["users"].values() if user.get("role") == role)
+
+	def get_or_create_chat(self, student_id, counselor_id):
+		student_value = (student_id or "").lower()
+		counselor_value = (counselor_id or "").lower()
+		if not student_value or not counselor_value:
+			return None
+
+		if self.database is not None:
+			doc = self.database.chats.find_one({"student_id": student_value, "counselor_id": counselor_value})
+			if doc:
+				return self._serialize(doc)
+
+			chat = {
+				"id": f"ch_{uuid4().hex[:10]}",
+				"student_id": student_value,
+				"counselor_id": counselor_value,
+				"created_at": datetime.utcnow().isoformat(),
+			}
+			try:
+				chat_doc = dict(chat)
+				self.database.chats.insert_one(chat_doc)
+				return self._serialize(chat_doc)
+			except Exception:
+				doc = self.database.chats.find_one({"student_id": student_value, "counselor_id": counselor_value})
+				if doc:
+					return self._serialize(doc)
+				raise
+
+		for chat in self.memory["chats"]:
+			if chat.get("student_id") == student_value and chat.get("counselor_id") == counselor_value:
+				return dict(chat)
+
+		chat = {
+			"id": f"ch_{uuid4().hex[:10]}",
+			"student_id": student_value,
+			"counselor_id": counselor_value,
+			"created_at": datetime.utcnow().isoformat(),
+		}
+		self.memory["chats"].append(chat)
+		return chat
+
+	def get_chat_by_id(self, chat_id):
+		if self.database is not None:
+			doc = self.database.chats.find_one({"id": chat_id})
+			return self._serialize(doc)
+
+		for chat in self.memory["chats"]:
+			if chat.get("id") == chat_id:
+				return dict(chat)
+		return None
+
+	def get_counselor_chats(self, counselor_id):
+		counselor_value = (counselor_id or "").lower()
+		if self.database is not None:
+			docs = list(self.database.chats.find({"counselor_id": counselor_value}).sort("created_at", -1))
+			return [self._serialize(doc) for doc in docs]
+
+		chats = [chat for chat in self.memory["chats"] if chat.get("counselor_id") == counselor_value]
+		chats.sort(key=lambda chat: chat.get("created_at") or "", reverse=True)
+		return [dict(chat) for chat in chats]
+
+	def add_message(self, message):
+		message.setdefault("id", f"m_{uuid4().hex[:10]}")
+		message.setdefault("timestamp", datetime.utcnow().isoformat())
+		if self.database is not None:
+			message_doc = dict(message)
+			self.database.messages.insert_one(message_doc)
+			return self._serialize(message_doc)
+		self.memory["messages"].append(message)
+		return dict(message)
+
+	def get_messages_for_chat(self, chat_id):
+		if self.database is not None:
+			docs = list(self.database.messages.find({"chat_id": chat_id}).sort("timestamp", 1))
+			return [self._serialize(doc) for doc in docs]
+
+		messages = [message for message in self.memory["messages"] if message.get("chat_id") == chat_id]
+		messages.sort(key=lambda message: message.get("timestamp") or "")
+		return [dict(message) for message in messages]
 
 
 db = DatabaseManager()

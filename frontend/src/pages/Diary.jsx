@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import MoodTracker from '../components/MoodTracker'
 import StudentLayout from '../components/StudentLayout'
-import { analyzeDiary, getDiaryHistory, getDiaryWeek } from '../services/api'
-import { Button, Card, Textarea } from '../components/ui/Primitives'
+import { analyzeDiary, createPost, getDiaryWeek, sendStudentCounselorMessage } from '../services/api'
+import { Button, Card, Section, Textarea } from '../components/ui/Primitives'
 
 function Diary({ role, email, sessionToken, onLogout }) {
 	const [text, setText] = useState('')
@@ -11,9 +11,10 @@ function Diary({ role, email, sessionToken, onLogout }) {
 	const [error, setError] = useState('')
 	const [weekData, setWeekData] = useState(null)
 	const [weekLoading, setWeekLoading] = useState(false)
-	const [historyOpen, setHistoryOpen] = useState(false)
-	const [historyLoading, setHistoryLoading] = useState(false)
-	const [historyData, setHistoryData] = useState(null)
+	const [suggestionOpen, setSuggestionOpen] = useState(false)
+	const [suggestionText, setSuggestionText] = useState('')
+	const [actionLoading, setActionLoading] = useState(false)
+	const [actionFeedback, setActionFeedback] = useState('')
 
 	const refreshWeek = async () => {
 		if (!email || !sessionToken) {
@@ -78,28 +79,6 @@ function Diary({ role, email, sessionToken, onLogout }) {
 		return Boolean(weekData.can_submit_today)
 	}, [weekData])
 
-	const handleToggleHistory = async () => {
-		const opening = !historyOpen
-		setHistoryOpen(opening)
-		if (!opening || !email || !sessionToken) {
-			return
-		}
-		setHistoryLoading(true)
-		setError('')
-		try {
-			const data = await getDiaryHistory(email, sessionToken, 8)
-			setHistoryData(data)
-		} catch (requestError) {
-			if (requestError?.response?.status === 401 || requestError?.response?.status === 403) {
-				setError('Your session expired. Please log in again.')
-			} else {
-				setError('Could not load previous week history right now.')
-			}
-		} finally {
-			setHistoryLoading(false)
-		}
-	}
-
 	const handleAnalyze = async (event) => {
 		event.preventDefault()
 		if (!canSubmitToday) {
@@ -112,9 +91,13 @@ function Diary({ role, email, sessionToken, onLogout }) {
 		setLoading(true)
 		setError('')
 		try {
-			const data = await analyzeDiary(email, text.trim(), sessionToken)
+			const submittedText = text.trim()
+			const data = await analyzeDiary(email, submittedText, sessionToken)
 			setResult(data)
 			setText('')
+			setSuggestionText(submittedText)
+			setSuggestionOpen(true)
+			setActionFeedback('')
 			await refreshWeek()
 		} catch (requestError) {
 			if (requestError?.response?.status === 409) {
@@ -126,6 +109,38 @@ function Diary({ role, email, sessionToken, onLogout }) {
 			}
 		} finally {
 			setLoading(false)
+		}
+	}
+
+	const handleSendToCounselor = async () => {
+		if (!suggestionText.trim()) {
+			return
+		}
+		setActionLoading(true)
+		setActionFeedback('')
+		try {
+			await sendStudentCounselorMessage(`[From: Diary] ${suggestionText.trim()}`, sessionToken)
+			setActionFeedback('Sent to counselor chat.')
+		} catch {
+			setActionFeedback('Could not send to counselor right now.')
+		} finally {
+			setActionLoading(false)
+		}
+	}
+
+	const handleTurnIntoPost = async () => {
+		if (!suggestionText.trim()) {
+			return
+		}
+		setActionLoading(true)
+		setActionFeedback('')
+		try {
+			await createPost(suggestionText.trim(), sessionToken)
+			setActionFeedback('Posted to feed.')
+		} catch {
+			setActionFeedback('Could not create post right now.')
+		} finally {
+			setActionLoading(false)
 		}
 	}
 
@@ -162,42 +177,6 @@ function Diary({ role, email, sessionToken, onLogout }) {
 						</div>
 					</div>
 					{weekLoading && <p className="text-sm text-[#8e7d9f]">Refreshing your week...</p>}
-
-					<div className="pt-1">
-						<Button type="button" onClick={handleToggleHistory} className="!h-10">
-							{historyOpen ? 'Hide previous week history' : 'Previous week history'}
-						</Button>
-					</div>
-
-					{historyOpen && (
-						<div className="safe-section !p-3 space-y-2.5">
-							{historyLoading && <p className="text-sm text-[#8e7d9f]">Loading previous weeks...</p>}
-							{!historyLoading && (!historyData?.weeks || historyData.weeks.length === 0) && (
-								<p className="text-sm text-[#8e7d9f]">No previous week history yet.</p>
-							)}
-							{!historyLoading && (historyData?.weeks || []).map((week) => (
-								<div key={week.week_start} className="space-y-2">
-									<p className="text-sm font-semibold text-[#5f4d73]">Week: {week.label}</p>
-									<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-1.5">
-										{(week.days || []).map((day) => (
-											<div key={day.date} className="rounded-md border border-[#eadff6] bg-white/80 px-2 py-2">
-												<p className="text-xs font-semibold text-[#7a6990]">{day.weekday}</p>
-												<p className="text-[11px] text-[#9a8aac]">{day.date.slice(5)}</p>
-												{day.submitted ? (
-													<>
-														<p className="text-sm text-[#5f4d73] mt-1 line-clamp-3 leading-relaxed">{day.entry?.text}</p>
-														<p className="text-xs text-[#8e7d9f] mt-1">{day.entry?.sentiment} • {day.entry?.emotion}</p>
-													</>
-												) : (
-													<p className="text-sm text-[#a091b4] mt-1">Did not check in</p>
-												)}
-											</div>
-										))}
-									</div>
-								</div>
-							))}
-						</div>
-					)}
 				</Card>
 
 				<Card className="space-y-4">
@@ -221,6 +200,36 @@ function Diary({ role, email, sessionToken, onLogout }) {
 					</form>
 
 					<MoodTracker result={result} />
+
+					{suggestionOpen && Boolean(suggestionText) && (
+						<Section className="!rounded-md p-4 space-y-3">
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<p className="text-sm font-semibold text-[#5f4d73]">Would you like to share this?</p>
+									<p className="text-xs text-[#8e7d9f] mt-1">You can send your check-in text to the counselor or turn it into a post.</p>
+								</div>
+								<button
+									type="button"
+									onClick={() => setSuggestionOpen(false)}
+									className="text-[#9a8aac] hover:text-[#6f5f83] leading-none text-lg"
+									aria-label="Close suggestion"
+								>
+									×
+								</button>
+							</div>
+
+							<div className="flex flex-wrap gap-2">
+								<Button type="button" onClick={handleSendToCounselor} disabled={actionLoading} className="!h-10 !mb-0">
+									Send this to counselor
+								</Button>
+								<Button type="button" onClick={handleTurnIntoPost} disabled={actionLoading} className="!h-10 !mb-0">
+									Turn this into a post
+								</Button>
+							</div>
+
+							{actionFeedback && <p className="text-sm text-[#7f6e91]">{actionFeedback}</p>}
+						</Section>
+					)}
 				</Card>
 			</div>
 		</StudentLayout>
