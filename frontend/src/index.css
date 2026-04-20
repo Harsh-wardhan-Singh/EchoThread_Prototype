@@ -244,6 +244,109 @@
 	.chat-time-peer {
 		color: #9a8aac;
 	}
+
+	.counselor-chat-shell {
+		overflow-x: hidden;
+		height: 100%;
+		min-height: 0;
+	}
+
+	.counselor-chat-shell > div {
+		min-height: 0;
+	}
+
+	.counselor-chat-selector-panel {
+		background: linear-gradient(180deg, #fff9fe 0%, #f7efff 100%);
+		padding: 0;
+		height: 0;
+		min-height: 0;
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: thin;
+		scrollbar-color: #c7a8ed #f2e9ff;
+	}
+
+	.counselor-chat-selector-panel::-webkit-scrollbar {
+		width: 8px;
+	}
+
+	.counselor-chat-selector-panel::-webkit-scrollbar-track {
+		background: #f2e9ff;
+	}
+
+	.counselor-chat-selector-panel::-webkit-scrollbar-thumb {
+		background: #c7a8ed;
+		border-radius: 999px;
+	}
+
+	.counselor-chat-selector-panel::-webkit-scrollbar-thumb:hover {
+		background: #b58ae8;
+	}
+
+	.counselor-chat-selector {
+		border-radius: 0;
+		border: 0;
+		border-bottom: 1px solid #eadcf8;
+		background: rgba(255, 255, 255, 0.9);
+		box-shadow: none;
+		transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background-color 180ms ease;
+	}
+
+	.counselor-chat-selector:hover {
+		background: #fff6fe;
+		border-color: #e3d2f6;
+		box-shadow: none;
+	}
+
+	.counselor-chat-selector.is-active {
+		border-color: #d7bff2;
+		background: #efdfff;
+		box-shadow: inset 4px 0 0 #c7a8ed;
+	}
+
+	.counselor-chat-selector.is-unseen {
+		background: #f3e8ff;
+	}
+
+	.counselor-chat-selector.is-unseen:hover {
+		background: #efe0ff;
+	}
+
+	.counselor-chat-selector-title {
+		color: #5f4d73;
+	}
+
+	.counselor-chat-selector-preview {
+		color: #8e7d9f;
+	}
+
+	.counselor-chat-message-pane {
+		height: 0;
+		min-height: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.counselor-chat-unseen-count {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 18px;
+		height: 18px;
+		padding: 0 5px;
+		border-radius: 999px;
+		font-size: 10px;
+		line-height: 1;
+		font-weight: 700;
+		color: #ffffff;
+		background: #b58ae8;
+	}
+
+	.inbox-post-highlight {
+		outline: 2px solid #d9c2f3;
+		border-radius: 4px;
+	}
 }
 
 @keyframes fadeSlide {

@@ -1,10 +1,10 @@
 import os
-from datetime import datetime
 from uuid import uuid4
 
 from dotenv import load_dotenv
 
 from data.fake_data import FAKE_DIARY, FAKE_POSTS
+from utils.time import now_ist_iso
 
 load_dotenv()
 
@@ -84,7 +84,7 @@ class DatabaseManager:
 		return self.database is not None
 
 	def add_post(self, post):
-		post.setdefault("created_at", datetime.utcnow().isoformat())
+		post.setdefault("created_at", now_ist_iso())
 		if self.database is not None:
 			self.database.posts.insert_one(post)
 			return post
@@ -132,7 +132,7 @@ class DatabaseManager:
 				return
 
 	def add_diary_entry(self, entry):
-		entry.setdefault("created_at", datetime.utcnow().isoformat())
+		entry.setdefault("created_at", now_ist_iso())
 		if self.database is not None:
 			self.database.diary_entries.insert_one(entry)
 			return entry
@@ -185,7 +185,7 @@ class DatabaseManager:
 			return None
 
 		if self.database is not None and ReturnDocument is not None:
-			now = datetime.utcnow().isoformat()
+			now = now_ist_iso()
 			default_uuid = str(uuid4())
 			doc = self.database.users.find_one_and_update(
 				{"email": email_lower},
@@ -214,7 +214,7 @@ class DatabaseManager:
 			"email": email_lower,
 			"user_uuid": user_uuid,
 			"role": role,
-			"created_at": datetime.utcnow().isoformat(),
+			"created_at": now_ist_iso(),
 		}
 		return user_uuid
 
@@ -222,6 +222,22 @@ class DatabaseManager:
 		if self.database is not None:
 			return self.database.users.count_documents({"role": role})
 		return sum(1 for user in self.memory["users"].values() if user.get("role") == role)
+
+	def get_email_by_user_uuid(self, user_uuid):
+		uuid_value = (user_uuid or "").strip()
+		if not uuid_value:
+			return None
+
+		if self.database is not None:
+			doc = self.database.users.find_one({"user_uuid": uuid_value})
+			if doc:
+				return (doc.get("email") or "").lower() or None
+
+		for email, user in self.memory["users"].items():
+			if user.get("user_uuid") == uuid_value:
+				return (email or "").lower() or None
+
+		return None
 
 	def get_or_create_chat(self, student_id, counselor_id):
 		student_value = (student_id or "").lower()
@@ -238,7 +254,8 @@ class DatabaseManager:
 				"id": f"ch_{uuid4().hex[:10]}",
 				"student_id": student_value,
 				"counselor_id": counselor_value,
-				"created_at": datetime.utcnow().isoformat(),
+				"counselor_last_seen_student_message_at": None,
+				"created_at": now_ist_iso(),
 			}
 			try:
 				chat_doc = dict(chat)
@@ -258,10 +275,29 @@ class DatabaseManager:
 			"id": f"ch_{uuid4().hex[:10]}",
 			"student_id": student_value,
 			"counselor_id": counselor_value,
-			"created_at": datetime.utcnow().isoformat(),
+			"counselor_last_seen_student_message_at": None,
+			"created_at": now_ist_iso(),
 		}
 		self.memory["chats"].append(chat)
 		return chat
+
+	def mark_chat_seen_by_counselor(self, chat_id, seen_timestamp):
+		if not chat_id or not seen_timestamp:
+			return
+
+		if self.database is not None:
+			self.database.chats.update_one(
+				{"id": chat_id},
+				{"$set": {"counselor_last_seen_student_message_at": seen_timestamp}},
+			)
+			return
+
+		for index, chat in enumerate(self.memory["chats"]):
+			if chat.get("id") == chat_id:
+				updated = dict(chat)
+				updated["counselor_last_seen_student_message_at"] = seen_timestamp
+				self.memory["chats"][index] = updated
+				return
 
 	def get_chat_by_id(self, chat_id):
 		if self.database is not None:
@@ -285,7 +321,7 @@ class DatabaseManager:
 
 	def add_message(self, message):
 		message.setdefault("id", f"m_{uuid4().hex[:10]}")
-		message.setdefault("timestamp", datetime.utcnow().isoformat())
+		message.setdefault("timestamp", now_ist_iso())
 		if self.database is not None:
 			message_doc = dict(message)
 			self.database.messages.insert_one(message_doc)

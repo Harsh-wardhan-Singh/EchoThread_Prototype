@@ -15,6 +15,7 @@ HIGH_RISK_PATTERNS = [
 	r"\bi should die\b",
 	r"\bi want to disappear forever\b",
 	r"\bno point living\b",
+	r"\btak(e|ing) (my|other(s)?) life\b"
 ]
 
 HIGH_RISK_KEYWORDS = {

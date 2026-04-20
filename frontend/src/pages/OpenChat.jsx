@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import StudentLayout from '../components/StudentLayout'
 import { Button, Card, Input } from '../components/ui/Primitives'
 import { getStudentCounselorChat, sendStudentCounselorMessage } from '../services/api'
+import { formatIstDayDate, formatIstTime, getIstDayKey } from '../utils/datetime'
 
 function OpenChat({ role, sessionToken, onLogout }) {
 	const [messages, setMessages] = useState([])
@@ -84,37 +85,15 @@ function OpenChat({ role, sessionToken, onLogout }) {
 	}, [messages])
 
 	const formatTime = (timestamp) => {
-		if (!timestamp) {
-			return ''
-		}
-		try {
-			return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
-		} catch {
-			return ''
-		}
+		return formatIstTime(timestamp)
 	}
 
 	const getDayKey = (timestamp) => {
-		if (!timestamp) {
-			return ''
-		}
-		try {
-			const date = new Date(timestamp)
-			return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-		} catch {
-			return ''
-		}
+		return getIstDayKey(timestamp)
 	}
 
 	const formatDayDate = (timestamp) => {
-		if (!timestamp) {
-			return ''
-		}
-		try {
-			return new Date(timestamp).toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' })
-		} catch {
-			return ''
-		}
+		return formatIstDayDate(timestamp)
 	}
 
 	return (
@@ -122,7 +101,7 @@ function OpenChat({ role, sessionToken, onLogout }) {
 			<Card className="h-full !p-0 flex flex-col overflow-hidden">
 				<div className="px-4 py-3 border-b border-[#eadff6] flex items-center justify-between">
 					<div className="flex items-center gap-2">
-						<p className="text-base font-semibold text-[#5f4d73]">counselor@hrc.du.ac.in</p>
+						<p className="text-base font-semibold text-[#5f4d73]">Counsellor</p>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-label="Verified counselor">
 							<path d="M12 1.8L14.8 4.4L18.5 3.9L19.9 7.4L23.2 9.2L22.7 12.9L24 16.3L21 18.5L20 22.1L16.3 21.9L13.1 24L10.4 21.4L6.7 21.9L5.3 18.4L2 16.6L2.5 12.9L1.2 9.5L4.2 7.3L5.2 3.7L8.9 3.9L12 1.8Z" fill="#ccb8ff" />
 							<path d="M8.4 12.4L10.8 14.7L15.7 9.8" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

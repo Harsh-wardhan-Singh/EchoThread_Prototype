@@ -1,4 +1,14 @@
 import { useState } from 'react'
+import { formatIstDateTime } from '../utils/datetime'
+
+function VerifiedCounselorIcon() {
+	return (
+		<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="Verified counselor">
+			<path d="M12 1.8L14.8 4.4L18.5 3.9L19.9 7.4L23.2 9.2L22.7 12.9L24 16.3L21 18.5L20 22.1L16.3 21.9L13.1 24L10.4 21.4L6.7 21.9L5.3 18.4L2 16.6L2.5 12.9L1.2 9.5L4.2 7.3L5.2 3.7L8.9 3.9L12 1.8Z" fill="#ccb8ff" />
+			<path d="M8.4 12.4L10.8 14.7L15.7 9.8" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+		</svg>
+	)
+}
 
 function CommentItem({ comment, postId, depth = 0, onAddReply }) {
 	const [replyOpen, setReplyOpen] = useState(false)
@@ -6,8 +16,9 @@ function CommentItem({ comment, postId, depth = 0, onAddReply }) {
 	const [replyText, setReplyText] = useState('')
 	const [replyLoading, setReplyLoading] = useState(false)
 
-	const createdAt = comment?.created_at ? new Date(comment.created_at).toLocaleString() : ''
+	const createdAt = formatIstDateTime(comment?.created_at)
 	const author = comment?.user_uuid || 'unknown'
+	const isCounselorComment = String(comment?.author_role || '').toLowerCase() === 'counselor'
 	const replies = Array.isArray(comment?.replies) ? comment.replies : []
 	const hasReplies = replies.length > 0
 	const isNested = depth > 0
@@ -35,7 +46,14 @@ function CommentItem({ comment, postId, depth = 0, onAddReply }) {
 		>
 			<div className="rounded-2xl border border-[#eadff6] bg-white/85 px-3 py-3 shadow-[0_4px_14px_rgba(216,198,235,0.18)]">
 				<div className="flex items-center justify-between gap-2">
-					<p className="text-[11px] text-[#8e7d9f]">UUID: {author}</p>
+					{isCounselorComment ? (
+						<div className="flex items-center gap-1.5">
+							<p className="text-[11px] text-[#8e7d9f]">Counsellor</p>
+							<VerifiedCounselorIcon />
+						</div>
+					) : (
+						<p className="text-[11px] text-[#8e7d9f]">UUID: {author}</p>
+					)}
 					<p className="text-[11px] text-[#9b8dae]">{createdAt}</p>
 				</div>
 				<p className="text-sm text-[#5f4d73] mt-1 leading-relaxed">{comment?.content}</p>
@@ -90,10 +108,12 @@ function CommentItem({ comment, postId, depth = 0, onAddReply }) {
 	)
 }
 
-function PostCard({ post, onAddComment, onAddReply }) {
-	const date = post?.created_at ? new Date(post.created_at).toLocaleString() : ''
+function PostCard({ post, onAddComment, onAddReply, onOpenStudentChat }) {
+	const date = formatIstDateTime(post?.created_at)
 	const comments = Array.isArray(post?.comments) ? post.comments : []
 	const displayUserUuid = post?.user_uuid || 'unavailable'
+	const isCounselorPost = post?.author_role === 'counselor'
+	const canOpenChat = typeof onOpenStudentChat === 'function' && !isCounselorPost && !!post?.user_uuid
 	const [commentsOpen, setCommentsOpen] = useState(false)
 	const [commentText, setCommentText] = useState('')
 	const [commentLoading, setCommentLoading] = useState(false)
@@ -115,7 +135,25 @@ function PostCard({ post, onAddComment, onAddReply }) {
 	return (
 		<article className="safe-card !rounded-md !p-5 space-y-4">
 			<div className="flex items-center justify-between gap-3 mb-2">
-				<p className="text-xs text-[#9887aa]">User UUID: {displayUserUuid}</p>
+				{isCounselorPost ? (
+					<div className="flex items-center gap-1.5">
+						<p className="text-xs text-[#9887aa]">Counsellor</p>
+						<VerifiedCounselorIcon />
+					</div>
+				) : (
+					<button
+						type="button"
+						onClick={() => {
+							if (canOpenChat) {
+								onOpenStudentChat(post.user_uuid)
+							}
+						}}
+						disabled={!canOpenChat}
+						className={`text-xs ${canOpenChat ? 'text-[#7d63a3] hover:text-[#5f4d73] underline underline-offset-2' : 'text-[#9887aa]'}`}
+					>
+						User UUID: {displayUserUuid}
+					</button>
+				)}
 				<p className="text-xs text-[#9887aa]">{date}</p>
 			</div>
 			<p className="text-[#5f4d73] leading-relaxed text-[15px]">{post?.content}</p>

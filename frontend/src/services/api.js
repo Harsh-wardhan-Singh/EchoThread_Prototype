@@ -132,55 +132,51 @@ export async function getStudentPulse(email, userUuid, sessionToken) {
 	}
 }
 
-export async function getCounselorPulse(sessionToken) {
+export async function getCounselorDashboard(sessionToken) {
 	try {
-		const { data } = await api.get('/pulse/counselor', {
+		const { data } = await api.get('/dashboard/counselor', {
 			headers: { 'x-session-token': sessionToken },
 		})
 		return data
 	} catch {
 		return {
 			mode: 'fake',
-			total_students: 42,
+			total_students: 52,
+			total_posts: 26,
+			stress_index: 57.7,
+			avg_sentiment_score: -0.08,
 			overall_stress_series: [
-				{ day: 'Mon', score: 52 },
-				{ day: 'Tue', score: 55 },
-				{ day: 'Wed', score: 58 },
-				{ day: 'Thu', score: 62 },
-				{ day: 'Fri', score: 65 },
-				{ day: 'Sat', score: 61 },
-				{ day: 'Sun', score: 59 },
+				{ day: 'Mon', score: 58 },
+				{ day: 'Tue', score: 63 },
+				{ day: 'Wed', score: 61 },
+				{ day: 'Thu', score: 66 },
+				{ day: 'Fri', score: 62 },
+				{ day: 'Sat', score: 55 },
+				{ day: 'Sun', score: 53 },
 			],
 			posts_series: [
-				{ day: 'Mon', count: 7 },
-				{ day: 'Tue', count: 8 },
-				{ day: 'Wed', count: 10 },
-				{ day: 'Thu', count: 9 },
-				{ day: 'Fri', count: 12 },
-				{ day: 'Sat', count: 11 },
-				{ day: 'Sun', count: 9 },
+				{ day: 'Mon', count: 4 },
+				{ day: 'Tue', count: 4 },
+				{ day: 'Wed', count: 4 },
+				{ day: 'Thu', count: 3 },
+				{ day: 'Fri', count: 3 },
+				{ day: 'Sat', count: 4 },
+				{ day: 'Sun', count: 4 },
 			],
-			sentiment_series: [
-				{ day: 'Mon', positive: 57, negative: 43 },
-				{ day: 'Tue', positive: 55, negative: 45 },
-				{ day: 'Wed', positive: 52, negative: 48 },
-				{ day: 'Thu', positive: 50, negative: 50 },
-				{ day: 'Fri', positive: 47, negative: 53 },
-				{ day: 'Sat', positive: 49, negative: 51 },
-				{ day: 'Sun', positive: 51, negative: 49 },
-			],
-			risk_counts: { LOW: 28, MEDIUM: 11, HIGH: 3 },
+			risk_counts: { LOW: 11, MEDIUM: 13, HIGH: 2 },
 			emotion_distribution: [
-				{ emotion: 'calm', count: 12 },
-				{ emotion: 'stress', count: 9 },
-				{ emotion: 'anxiety', count: 8 },
-				{ emotion: 'sadness', count: 6 },
+				{ emotion: 'stress', count: 6 },
+				{ emotion: 'anxiety', count: 5 },
+				{ emotion: 'calm', count: 5 },
 				{ emotion: 'hopeful', count: 4 },
+				{ emotion: 'relief', count: 3 },
+				{ emotion: 'burnout', count: 2 },
 			],
 			analytics_summary: [
-				'Campus stress trend is moderate with a peak around mid-week.',
-				'Negative sentiment rises on high-activity days; consider proactive outreach before deadlines.',
-				'Most posts remain LOW risk, but MEDIUM/HIGH posts continue to require counselor attention.',
+				'26 feed posts were observed in the last 7 days.',
+				'Stress index is 57.7% (posts that are negative or show high-stress emotions).',
+				'Average sentiment score is -0.08 on a -1 to +1 scale.',
+				'Average stress score is 59.7 out of 100 from post-level risk signals.',
 			],
 		}
 	}
@@ -222,5 +218,21 @@ export async function sendCounselorChatMessage(chatId, content, sessionToken) {
 		{ content },
 		{ headers: { 'x-session-token': sessionToken } },
 	)
+	return data
+}
+
+export async function openCounselorChatByUuid(studentUuid, sessionToken) {
+	const { data } = await api.post(
+		'/chat/counselor/open-chat-by-uuid',
+		{ student_uuid: studentUuid },
+		{ headers: { 'x-session-token': sessionToken } },
+	)
+	return data
+}
+
+export async function getCounselorInbox(sessionToken) {
+	const { data } = await api.get('/inbox/counselor', {
+		headers: { 'x-session-token': sessionToken },
+	})
 	return data
 }

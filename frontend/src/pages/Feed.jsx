@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import PostCard from '../components/PostCard'
+import CounselorLayout from '../components/CounselorLayout'
 import StudentLayout from '../components/StudentLayout'
 import { mockPosts } from '../data/mockData'
-import { createPost, createPostComment, createPostReply, getPosts } from '../services/api'
+import { createPost, createPostComment, createPostReply, getPosts, openCounselorChatByUuid } from '../services/api'
 import { Button, Card, Textarea } from '../components/ui/Primitives'
 
 function Feed({ role, sessionToken, onLogout }) {
+	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
 	const [posts, setPosts] = useState(mockPosts)
 	const [content, setContent] = useState('')
 	const [loading, setLoading] = useState(false)
@@ -38,6 +42,23 @@ function Feed({ role, sessionToken, onLogout }) {
 		return undefined
 	}, [loadPosts])
 
+	useEffect(() => {
+		const postId = (searchParams.get('postId') || '').trim()
+		if (!postId || posts.length === 0) {
+			return
+		}
+
+		const element = document.getElementById(`post-card-${postId}`)
+		if (!element) {
+			return
+		}
+
+		element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+		element.classList.add('inbox-post-highlight')
+		const timeout = setTimeout(() => element.classList.remove('inbox-post-highlight'), 2200)
+		return () => clearTimeout(timeout)
+	}, [posts, searchParams])
+
 	const handleCreate = async (event) => {
 		event.preventDefault()
 		if (!content.trim()) {
@@ -67,8 +88,21 @@ function Feed({ role, sessionToken, onLogout }) {
 		await loadPosts(true)
 	}
 
+	const handleOpenStudentChat = async (studentUuid) => {
+		if (role !== 'counselor' || !studentUuid) {
+			return
+		}
+		const result = await openCounselorChatByUuid(studentUuid, sessionToken)
+		const chatId = result?.chat?.chat_id
+		if (chatId) {
+			navigate(`/counselor/chats?chatId=${encodeURIComponent(chatId)}`)
+		}
+	}
+
+	const Layout = role === 'counselor' ? CounselorLayout : StudentLayout
+
 	return (
-		<StudentLayout role={role} onLogout={onLogout}>
+		<Layout role={role} onLogout={onLogout}>
 			<div className="space-y-4">
 				<Card className="space-y-4">
 					<div className="flex items-center justify-between gap-3 flex-wrap">
@@ -102,14 +136,23 @@ function Feed({ role, sessionToken, onLogout }) {
 
 				<section className="space-y-4">
 					{posts.map((post) => (
-						<div key={post.id} className="space-y-2">
-							<PostCard post={post} onAddComment={handleAddComment} onAddReply={handleAddReply} />
+						<div
+							key={post.id}
+							id={`post-card-${post.id}`}
+							className="space-y-2 transition-all"
+						>
+							<PostCard
+								post={post}
+								onAddComment={handleAddComment}
+								onAddReply={handleAddReply}
+								onOpenStudentChat={role === 'counselor' ? handleOpenStudentChat : undefined}
+							/>
 							<div className="h-px bg-[#f3e6fa]" />
 						</div>
 					))}
 				</section>
 			</div>
-		</StudentLayout>
+		</Layout>
 	)
 }
 

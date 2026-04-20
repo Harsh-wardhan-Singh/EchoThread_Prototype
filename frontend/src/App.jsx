@@ -6,6 +6,7 @@ import Feed from './pages/Feed'
 import PulseDashboard from './pages/PulseDashboard'
 import CounselorDashboard from './pages/CounselorDashboard'
 import CounselorChats from './pages/CounselorChats'
+import CounselorInbox from './pages/CounselorInbox'
 import OpenChat from './pages/OpenChat'
 import { AppContainer } from './components/ui/Primitives'
 
@@ -40,7 +41,7 @@ function AppRoutes({ auth, authProps, onLogin }) {
         <Route
           path="/feed"
           element={
-            <ProtectedRoute role={auth.role} allowedRoles={['student']}>
+            <ProtectedRoute role={auth.role} allowedRoles={['student', 'counselor']}>
               <Feed {...authProps} />
             </ProtectedRoute>
           }
@@ -74,6 +75,22 @@ function AppRoutes({ auth, authProps, onLogin }) {
           element={
             <ProtectedRoute role={auth.role} allowedRoles={['counselor']}>
               <CounselorChats {...authProps} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/counselor/feed"
+          element={
+            <ProtectedRoute role={auth.role} allowedRoles={['counselor']}>
+              <Feed {...authProps} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/counselor/inbox"
+          element={
+            <ProtectedRoute role={auth.role} allowedRoles={['counselor']}>
+              <CounselorInbox {...authProps} />
             </ProtectedRoute>
           }
         />

@@ -31,6 +31,19 @@ def _entry(entry_id, email, text, day, sentiment, emotion, risk, risk_score, hou
 	}
 
 
+def _post(post_id, email, content, day, sentiment, emotion, risk, risk_score, hour, minute):
+	return {
+		"id": post_id,
+		"email": email,
+		"content": content,
+		"created_at": _at_day(day, hour, minute).isoformat(),
+		"sentiment": sentiment,
+		"emotion": emotion,
+		"risk": risk,
+		"risk_score": risk_score,
+	}
+
+
 FAKE_POSTS = [
 	{
 		"id": "p_demo_1",
@@ -92,6 +105,36 @@ FAKE_POSTS = [
 		"risk": "LOW",
 		"risk_score": 0.41,
 	},
+]
+
+
+FAKE_DASHBOARD_POSTS = [
+	_post("dp_1", STUDENT_ONE_EMAIL, "Lab submission backlog is making me feel very stretched today.", today - timedelta(days=6), "negative", "stress", "MEDIUM", 0.64, 9, 25),
+	_post("dp_2", STUDENT_TWO_EMAIL, "Slept properly and felt calmer during morning classes.", today - timedelta(days=6), "positive", "calm", "LOW", 0.22, 11, 10),
+	_post("dp_3", STUDENT_ONE_EMAIL, "Group project conflict left me anxious before the afternoon lecture.", today - timedelta(days=6), "negative", "anxiety", "MEDIUM", 0.71, 15, 45),
+	_post("dp_4", STUDENT_TWO_EMAIL, "Evening walk helped me reset mentally.", today - timedelta(days=6), "positive", "relief", "LOW", 0.2, 20, 5),
+	_post("dp_5", STUDENT_ONE_EMAIL, "Could not focus in class and felt emotionally exhausted.", today - timedelta(days=5), "negative", "burnout", "HIGH", 0.84, 10, 30),
+	_post("dp_6", STUDENT_TWO_EMAIL, "Presentation prep was intense but manageable with breaks.", today - timedelta(days=5), "neutral", "stress", "MEDIUM", 0.56, 13, 50),
+	_post("dp_7", STUDENT_ONE_EMAIL, "Talking to my roommate made things feel less overwhelming.", today - timedelta(days=5), "positive", "hopeful", "LOW", 0.29, 18, 15),
+	_post("dp_8", STUDENT_TWO_EMAIL, "I felt isolated after missing a deadline.", today - timedelta(days=5), "negative", "lonely", "MEDIUM", 0.67, 22, 20),
+	_post("dp_9", STUDENT_ONE_EMAIL, "Morning routine worked and I stayed steady through the day.", today - timedelta(days=4), "positive", "calm", "LOW", 0.24, 8, 40),
+	_post("dp_10", STUDENT_TWO_EMAIL, "Unexpected quiz spiked my anxiety.", today - timedelta(days=4), "negative", "anxiety", "MEDIUM", 0.63, 12, 35),
+	_post("dp_11", STUDENT_ONE_EMAIL, "Mentor feedback gave me confidence again.", today - timedelta(days=4), "positive", "hopeful", "LOW", 0.25, 16, 5),
+	_post("dp_12", STUDENT_TWO_EMAIL, "Felt mentally drained after back-to-back labs.", today - timedelta(days=4), "negative", "stress", "MEDIUM", 0.6, 21, 30),
+	_post("dp_13", STUDENT_ONE_EMAIL, "Panic before viva; heartbeat would not slow down.", today - timedelta(days=3), "negative", "panic", "HIGH", 0.88, 9, 10),
+	_post("dp_14", STUDENT_TWO_EMAIL, "Had a panic episode before the viva and could not settle down.", today - timedelta(days=3), "negative", "panic", "HIGH", 0.9, 14, 45),
+	_post("dp_15", STUDENT_ONE_EMAIL, "Campus workload still feels heavy this week.", today - timedelta(days=3), "negative", "stress", "MEDIUM", 0.66, 19, 0),
+	_post("dp_16", STUDENT_TWO_EMAIL, "Had a neutral day—busy but not overwhelming.", today - timedelta(days=2), "neutral", "calm", "LOW", 0.34, 10, 55),
+	_post("dp_17", STUDENT_ONE_EMAIL, "Short break and journaling helped me stabilise.", today - timedelta(days=2), "positive", "calm", "LOW", 0.21, 13, 20),
+	_post("dp_18", STUDENT_TWO_EMAIL, "Worry about placements is building up again.", today - timedelta(days=2), "negative", "fear", "MEDIUM", 0.69, 17, 35),
+	_post("dp_19", STUDENT_ONE_EMAIL, "Could not sleep and felt irritable in class.", today - timedelta(days=1), "negative", "anger", "MEDIUM", 0.62, 9, 50),
+	_post("dp_20", STUDENT_TWO_EMAIL, "Counseling helpline poster reminded me to seek support if needed.", today - timedelta(days=1), "positive", "hopeful", "LOW", 0.27, 12, 40),
+	_post("dp_21", STUDENT_ONE_EMAIL, "Team meeting was productive and lowered my stress.", today - timedelta(days=1), "positive", "relief", "LOW", 0.26, 18, 30),
+	_post("dp_22", STUDENT_TWO_EMAIL, "Deadline extension gave me breathing space.", today - timedelta(days=1), "positive", "calm", "LOW", 0.19, 21, 5),
+	_post("dp_23", STUDENT_ONE_EMAIL, "Today started rough, but I am trying to stay grounded.", today, "neutral", "stress", "MEDIUM", 0.54, 8, 15),
+	_post("dp_24", STUDENT_TWO_EMAIL, "I still feel tense about exams next month.", today, "negative", "anxiety", "MEDIUM", 0.65, 11, 25),
+	_post("dp_25", STUDENT_ONE_EMAIL, "Joined a peer circle and felt less alone.", today, "positive", "hopeful", "LOW", 0.28, 16, 50),
+	_post("dp_26", STUDENT_TWO_EMAIL, "Evening felt balanced after finishing pending notes.", today, "positive", "calm", "LOW", 0.2, 20, 10),
 ]
 
 

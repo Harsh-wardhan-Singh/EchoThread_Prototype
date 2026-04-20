@@ -1,22 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
 import { Button } from './ui/Primitives'
-
-function NavLink({ to, children }) {
-	const location = useLocation()
-	const active = location.pathname === to
-	return (
-		<Link
-			to={to}
-			className={`flex-1 text-center px-3 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
-				active
-					? 'bg-gradient-to-r from-[#f6aac8] to-[#ccb8ff] text-white shadow-[0_10px_24px_rgba(244,180,217,0.3)]'
-					: 'text-[#8f7fa1] hover:bg-white/70 hover:scale-[1.02]'
-			}`}
-		>
-			{children}
-		</Link>
-	)
-}
 
 function Navbar({ role, onLogout }) {
 	return (
@@ -35,17 +17,6 @@ function Navbar({ role, onLogout }) {
 					Logout
 				</Button>
 			</div>
-
-			{role === 'counselor' && (
-				<div className="mt-3 px-4 pb-4">
-					<div className="safe-section !p-2">
-						<div className="flex gap-2">
-							<NavLink to="/counselor">Dashboard</NavLink>
-							<NavLink to="/counselor/chats">Chats</NavLink>
-						</div>
-					</div>
-				</div>
-			)}
 		</nav>
 	)
 }
