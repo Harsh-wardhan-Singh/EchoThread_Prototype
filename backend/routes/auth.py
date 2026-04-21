@@ -2,20 +2,22 @@ import base64
 import hashlib
 import hmac
 import os
+import secrets
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, EmailStr
 from uuid import uuid4
 
 from db import db
-from utils.otp import detect_role, generate_otp, verify_otp
+from utils.otp import COUNSELOR_EMAIL, detect_role, generate_otp, verify_otp
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 otp_store = {}
 session_store = {}
-SESSION_SECRET = (os.getenv("SESSION_SECRET") or "echothread-dev-session-secret").encode("utf-8")
+_session_secret = (os.getenv("SESSION_SECRET") or "").strip() or secrets.token_urlsafe(48)
+SESSION_SECRET = _session_secret.encode("utf-8")
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 14
 
 
@@ -26,6 +28,11 @@ class SendOtpRequest(BaseModel):
 class VerifyOtpRequest(BaseModel):
 	email: EmailStr
 	otp: str
+
+
+class EmergencyResolveRequest(BaseModel):
+	student_uuid: str
+	reason: str | None = None
 
 
 def _encode_payload(payload: str):
@@ -107,6 +114,59 @@ def verify_user_otp(payload: VerifyOtpRequest):
 		"email": email,
 		"user_uuid": user_uuid,
 		"session_token": session_token,
+	}
+
+
+@router.post("/emergency/resolve-email")
+def emergency_resolve_email(
+	payload: EmergencyResolveRequest,
+	x_session_token: str | None = Header(default=None),
+	x_emergency_key: str | None = Header(default=None),
+):
+	actor_email = resolve_session_email(x_session_token)
+	if detect_role(actor_email) != "counselor" or actor_email != COUNSELOR_EMAIL:
+		raise HTTPException(status_code=403, detail="Counselor access required")
+
+	configured_key = (os.getenv("EMERGENCY_ACCESS_KEY") or "").strip()
+	if not configured_key:
+		raise HTTPException(status_code=503, detail="Emergency access is disabled")
+
+	provided_key = (x_emergency_key or "").strip()
+	if not provided_key or not hmac.compare_digest(provided_key, configured_key):
+		db.add_emergency_access_log(
+			actor_email=actor_email,
+			target_user_uuid=payload.student_uuid,
+			reason=payload.reason,
+			outcome="denied_invalid_key",
+		)
+		raise HTTPException(status_code=403, detail="Invalid emergency key")
+
+	student_uuid = (payload.student_uuid or "").strip()
+	if not student_uuid:
+		raise HTTPException(status_code=400, detail="student_uuid is required")
+
+	resolved_email = db.get_email_by_user_uuid(student_uuid)
+	if not resolved_email:
+		db.add_emergency_access_log(
+			actor_email=actor_email,
+			target_user_uuid=student_uuid,
+			reason=payload.reason,
+			outcome="not_found",
+		)
+		raise HTTPException(status_code=404, detail="Student not found")
+
+	log_entry = db.add_emergency_access_log(
+		actor_email=actor_email,
+		target_user_uuid=student_uuid,
+		reason=payload.reason,
+		outcome="success",
+	)
+	return {
+		"success": True,
+		"student_uuid": student_uuid,
+		"email": resolved_email,
+		"audit_log_id": log_entry.get("id"),
+		"accessed_at": log_entry.get("created_at"),
 	}
 
 

@@ -30,15 +30,15 @@ def _build_student_risk_lookup(posts):
 	severity = {"LOW": 1, "MEDIUM": 2, "HIGH": 3}
 	lookup = {}
 	for post in posts:
-		email = (post.get("email") or "").lower().strip()
-		if not email:
+		student_uuid = (post.get("user_uuid") or "").strip()
+		if not student_uuid:
 			continue
 		risk_label = _normalize_risk_label(post.get("risk"))
 		if not risk_label:
 			continue
-		current = lookup.get(email)
+		current = lookup.get(student_uuid)
 		if current is None or severity[risk_label] > severity[current]:
-			lookup[email] = risk_label
+			lookup[student_uuid] = risk_label
 	return lookup
 
 
@@ -81,8 +81,8 @@ def get_student_chat(x_session_token: str | None = Header(default=None)):
 	return {
 		"chat": {
 			"id": chat.get("id") or chat.get("_id"),
-			"student_id": chat.get("student_id"),
-			"counselor_id": chat.get("counselor_id"),
+			"student_id": chat.get("student_uuid"),
+			"counselor_id": chat.get("counselor_uuid"),
 			"created_at": chat.get("created_at"),
 		},
 		"messages": _serialize_messages(messages),
@@ -131,15 +131,14 @@ def get_counselor_chats(x_session_token: str | None = Header(default=None)):
 		last_seen = chat.get("counselor_last_seen_student_message_at")
 		unseen_count = _count_unseen_student_messages(messages, last_seen)
 
-		student_email = (chat.get("student_id") or "").lower().strip()
-		student_uuid = db.get_or_create_user_uuid(student_email, "student") if student_email else None
+		student_uuid = (chat.get("student_uuid") or "").strip() or None
 
 		last_message = messages[-1] if messages else None
 		items.append(
 			{
 				"chat_id": chat_id,
 				"student_uuid": student_uuid,
-				"risk_label": risk_lookup.get(student_email, "NO_INFORMATION"),
+				"risk_label": risk_lookup.get(student_uuid, "NO_INFORMATION"),
 				"unseen_count": unseen_count,
 				"has_unseen": unseen_count > 0,
 				"created_at": chat.get("created_at"),
@@ -166,11 +165,11 @@ def get_counselor_messages(chat_id: str, x_session_token: str | None = Header(de
 	chat = db.get_chat_by_id(chat_id)
 	if not chat:
 		raise HTTPException(status_code=404, detail="Chat not found")	
-	if (chat.get("counselor_id") or "").lower() != counselor_email:
+	counselor_uuid = db.get_or_create_user_uuid(counselor_email, "counselor")
+	if (chat.get("counselor_uuid") or "") != counselor_uuid:
 		raise HTTPException(status_code=403, detail="You can only access your own chats")
 
-	student_email = (chat.get("student_id") or "").lower().strip()
-	student_uuid = db.get_or_create_user_uuid(student_email, "student") if student_email else None
+	student_uuid = (chat.get("student_uuid") or "").strip() or None
 	risk_lookup = _build_student_risk_lookup(db.get_posts())
 
 	messages = db.get_messages_for_chat(chat_id)
@@ -185,10 +184,10 @@ def get_counselor_messages(chat_id: str, x_session_token: str | None = Header(de
 		"chat": {
 			"id": chat.get("id") or chat.get("_id"),
 			"student_uuid": student_uuid,
-			"risk_label": risk_lookup.get(student_email, "NO_INFORMATION"),
+			"risk_label": risk_lookup.get(student_uuid, "NO_INFORMATION"),
 			"unseen_count": 0,
 			"has_unseen": False,
-			"counselor_id": chat.get("counselor_id"),
+			"counselor_id": chat.get("counselor_uuid"),
 			"created_at": chat.get("created_at"),
 		},
 		"messages": _serialize_messages(messages),
@@ -208,7 +207,8 @@ def send_counselor_message(chat_id: str, payload: SendMessageRequest, x_session_
 	chat = db.get_chat_by_id(chat_id)
 	if not chat:
 		raise HTTPException(status_code=404, detail="Chat not found")
-	if (chat.get("counselor_id") or "").lower() != counselor_email:
+	counselor_uuid = db.get_or_create_user_uuid(counselor_email, "counselor")
+	if (chat.get("counselor_uuid") or "") != counselor_uuid:
 		raise HTTPException(status_code=403, detail="You can only send to your own chats")
 
 	message = {
@@ -245,6 +245,6 @@ def open_counselor_chat_by_uuid(payload: OpenChatByUuidRequest, x_session_token:
 		"chat": {
 			"chat_id": chat.get("id") or chat.get("_id"),
 			"student_uuid": student_uuid,
-			"risk_label": risk_lookup.get(student_email, "NO_INFORMATION"),
+			"risk_label": risk_lookup.get(student_uuid, "NO_INFORMATION"),
 		}
 	}

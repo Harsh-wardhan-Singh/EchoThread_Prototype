@@ -232,6 +232,7 @@ export async function openCounselorChatByUuid(studentUuid, sessionToken) {
 
 export async function getCounselorInbox(sessionToken) {
 	const { data } = await api.get('/inbox/counselor', {
+		timeout: 15000,
 		headers: { 'x-session-token': sessionToken },
 	})
 	return data

@@ -79,6 +79,8 @@ function Diary({ role, email, sessionToken, onLogout }) {
 		return Boolean(weekData.can_submit_today)
 	}, [weekData])
 
+	const supportMessage = result?.support_message || ''
+
 	const handleAnalyze = async (event) => {
 		event.preventDefault()
 		if (!canSubmitToday) {
@@ -217,6 +219,12 @@ function Diary({ role, email, sessionToken, onLogout }) {
 									×
 								</button>
 							</div>
+
+							{supportMessage && (
+								<div className="rounded-xl border border-[#f4c7d9] bg-[#fff3f8] px-3 py-2">
+									<p className="text-sm text-[#8d4d6d] leading-relaxed">{supportMessage}</p>
+								</div>
+							)}
 
 							<div className="flex flex-wrap gap-2">
 								<Button type="button" onClick={handleSendToCounselor} disabled={actionLoading} className="!h-10 !mb-0">

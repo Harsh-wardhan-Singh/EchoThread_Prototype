@@ -10,6 +10,7 @@ from data.fake_data import FAKE_DIARY
 from db import db
 from routes.auth import verify_session
 from services.assess_risk import assess_risk
+from services.risk import resolve_high_risk_support_message
 from services.sentiment import analyze_text
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -79,9 +80,11 @@ def analyze(payload: AnalyzeRequest):
 			"provider": "fallback",
 		}
 	risk_data = assess_risk(payload.text, analysis["sentiment"], analysis["emotion"])
+	support_message = resolve_high_risk_support_message(payload.text, risk_data.get("risk"))
 	return {
 		**analysis,
 		**risk_data,
+		"support_message": support_message,
 	}
 
 
@@ -103,6 +106,7 @@ def create_diary_entry(payload: DiaryRequest, x_session_token: str | None = Head
 			"provider": "fallback",
 		}
 	risk_data = assess_risk(payload.text, analysis["sentiment"], analysis["emotion"])
+	support_message = resolve_high_risk_support_message(payload.text, risk_data.get("risk"))
 	entry = {
 		"id": f"d_{uuid4().hex[:10]}",
 		"email": _canonical_demo_email(email) if _flag_enabled("DIARY_USE_FAKE_DATA", default=True) else email,
@@ -128,6 +132,7 @@ def create_diary_entry(payload: DiaryRequest, x_session_token: str | None = Head
 		"checkin_date": today,
 		**analysis,
 		**risk_data,
+		"support_message": support_message,
 	}
 
 

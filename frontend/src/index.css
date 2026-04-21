@@ -258,12 +258,15 @@
 	.counselor-chat-selector-panel {
 		background: linear-gradient(180deg, #fff9fe 0%, #f7efff 100%);
 		padding: 0;
-		height: 0;
-		min-height: 0;
-		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: thin;
 		scrollbar-color: #c7a8ed #f2e9ff;
+	}
+
+	.counselor-chat-shell .counselor-chat-selector-panel {
+		height: 0;
+		min-height: 0;
+		overflow-y: auto;
 	}
 
 	.counselor-chat-selector-panel::-webkit-scrollbar {

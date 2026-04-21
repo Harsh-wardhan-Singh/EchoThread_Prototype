@@ -39,10 +39,15 @@ function CounselorInbox({ role, sessionToken, onLogout }) {
 		}
 		setError('')
 		try {
-			const data = await getCounselorInbox(sessionToken)
+			let data
+			try {
+				data = await getCounselorInbox(sessionToken)
+			} catch {
+				data = await getCounselorInbox(sessionToken)
+			}
 			setItems(data.items || [])
 		} catch {
-			setError('Could not load inbox right now.')
+			setError('Could not refresh inbox right now. Showing last loaded data.')
 		} finally {
 			setLoading(false)
 			if (showRefresh) {
@@ -62,13 +67,35 @@ function CounselorInbox({ role, sessionToken, onLogout }) {
 
 	const inboxItems = useMemo(() => items, [items])
 
-	const openItem = (item) => {
+	const openItem = async (item) => {
+		setError('')
 		if (item.type === 'high_risk_post') {
-			navigate(`/counselor/feed?postId=${encodeURIComponent(item.post_id || '')}`)
+			if (item.post_id) {
+				navigate(`/counselor/feed?postId=${encodeURIComponent(item.post_id)}`)
+			} else {
+				navigate('/counselor/feed')
+			}
 			return
 		}
 		if (item.type === 'student_message') {
-			navigate(`/counselor/chats?chatId=${encodeURIComponent(item.chat_id || '')}`)
+			if (item.chat_id) {
+				navigate(`/counselor/chats?chatId=${encodeURIComponent(item.chat_id)}`)
+				return
+			}
+			if (item.student_uuid) {
+				try {
+					const result = await openCounselorChatByUuid(item.student_uuid, sessionToken)
+					const chatId = result?.chat?.chat_id
+					if (chatId) {
+						navigate(`/counselor/chats?chatId=${encodeURIComponent(chatId)}`)
+						return
+					}
+				} catch {
+					setError('Could not open this chat right now.')
+					return
+				}
+			}
+			setError('Could not open this chat right now.')
 		}
 	}
 
@@ -77,10 +104,17 @@ function CounselorInbox({ role, sessionToken, onLogout }) {
 		if (!studentUuid) {
 			return
 		}
-		const result = await openCounselorChatByUuid(studentUuid, sessionToken)
-		const chatId = result?.chat?.chat_id
-		if (chatId) {
-			navigate(`/counselor/chats?chatId=${encodeURIComponent(chatId)}`)
+		setError('')
+		try {
+			const result = await openCounselorChatByUuid(studentUuid, sessionToken)
+			const chatId = result?.chat?.chat_id
+			if (chatId) {
+				navigate(`/counselor/chats?chatId=${encodeURIComponent(chatId)}`)
+				return
+			}
+			setError('Could not open this chat right now.')
+		} catch {
+			setError('Could not open this chat right now.')
 		}
 	}
 
@@ -96,7 +130,7 @@ function CounselorInbox({ role, sessionToken, onLogout }) {
 				<p className="text-sm text-[#8e7d9f]">New high-risk posts and student message alerts.</p>
 			</Card>
 
-			{loading && (
+			{loading && items.length === 0 && (
 				<Card>
 					<p className="text-sm text-[#8e7d9f]">Loading inbox...</p>
 				</Card>
@@ -108,7 +142,7 @@ function CounselorInbox({ role, sessionToken, onLogout }) {
 				</Card>
 			)}
 
-			{!loading && !error && (
+			{!loading && (
 				<section className="counselor-chat-selector-panel overflow-hidden border border-[#eadcf8]">
 					{inboxItems.length === 0 ? (
 						<Card>
@@ -121,7 +155,9 @@ function CounselorInbox({ role, sessionToken, onLogout }) {
 								<button
 									key={item.id}
 									type="button"
-									onClick={() => openItem(item)}
+									onClick={() => {
+										void openItem(item)
+									}}
 									className={`counselor-chat-selector w-full text-left px-4 py-3 ${!isPost ? 'is-unseen' : ''}`}
 								>
 									<p className={`text-[11px] font-semibold uppercase tracking-wide ${isPost ? 'text-[#a23434]' : 'text-[#6d5b87]'}`}>

@@ -24,6 +24,12 @@ HIGH_RISK_KEYWORDS = {
 	"life is pointless",
 }
 
+HIGH_RISK_SUPPORT_MESSAGE = (
+	"You are not alone and there are people who want you to live, "
+	"talk to your counselor or if you want then call this toll free number: 1800 233 3330 , "
+	"You are strong"
+)
+
 MEDIUM_RISK_KEYWORDS = {
 	"panic",
 	"anxious",
@@ -55,6 +61,19 @@ def score_keywords(text: str) -> float:
 
 	raw_score = high_keyword_hits * 0.65 + medium_hits * 0.35 + low_hits * 0.14
 	return max(0.0, min(1.0, raw_score))
+
+
+def has_high_risk_pattern_match(text: str) -> bool:
+	content = (text or "").lower()
+	return any(re.search(pattern, content) for pattern in HIGH_RISK_PATTERNS)
+
+
+def resolve_high_risk_support_message(text: str, risk: str | None) -> str | None:
+	if (risk or "").upper() != "HIGH":
+		return None
+	if not has_high_risk_pattern_match(text):
+		return None
+	return HIGH_RISK_SUPPORT_MESSAGE
 
 
 def assess_risk(text: str, sentiment: str = "neutral", emotion: str = "calm"):

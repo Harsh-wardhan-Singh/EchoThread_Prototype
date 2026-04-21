@@ -102,7 +102,6 @@ def create_post(payload: PostCreateRequest, x_session_token: str | None = Header
 	risk_data = assess_risk(payload.content, analysis["sentiment"], analysis["emotion"])
 	post = {
 		"id": f"p_{uuid4().hex[:10]}",
-		"email": email,
 		"author_role": author_role,
 		"user_uuid": user_uuid,
 		"content": payload.content,

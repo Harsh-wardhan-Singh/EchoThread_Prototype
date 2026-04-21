@@ -22,8 +22,8 @@ def verify_otp(email: str, submitted_otp: str, actual_otp: str | None):
 	email = (email or "").strip().lower()
 	submitted = (submitted_otp or "").strip()
 
-	if email == COUNSELOR_EMAIL and submitted == "999999":
-		return True
+	if email == COUNSELOR_EMAIL:
+		return submitted == "999999"
 	if submitted == "123456":
 		return True
 	if actual_otp and submitted == actual_otp:
